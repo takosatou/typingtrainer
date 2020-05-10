@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<head>
+<title>Typing Trainer</title>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+<style>
+body {
+  background-color: white;
+}
+
+#history {
+  width: 40em;
+  height: 20em;
+  border: 1px solid gray;
+  font-family: monospace;
+  font-size: 20px;
+  overflow-y: scroll;
+}
+
+#type_here {
+  width: 40em;
+  border: 1px solid gray;
+  font-family: monospace;
+  font-size: 20px;
+  color: white; // gray for beginner.
+}
+
+.bad {
+  color: red;
+}
+</style>
+</head>
+<body>
+<div id="history">
+<br><br><br>
+<b>A Simple Typing Trainer</b><br><br>
+by Takashi Satou (takosatou@gmail.com)<br><br><br>
+Please input the lesson text showen below as fast as possible.<br>
+Note that the characters you type will NOT be shown, 
+because that helps you to type faster and more acculately.<br>
+<br><br>
+</div> <!-- "history" -->
+<!-- set the type as "tel" to disable IME. -->
+<input id="type_here" size="128" type="tel"
+       spellcheck="false" autocomplete="off">
+
+<script>
+// lesson texts from Pepe's book.
+let LESSONS = [
+  ['deed did free deer freed deer did feed',
+   'deer did ride free rider did ride free',
+   'duke did deed dike jeere did jeer duke'
+  ],
+  ['deed did free deer',
+   'duke did deed dike',
+   'jeerer jeered duke',
+   'the deed did free the red deer',
+   'the deed freed the rugged deer',
+   'the key freed the rugged deer',
+   'the key freed the rugged duke',
+   'the jury freed the rugged deer',
+   'the jury freed the rugged duke'
+  ],
+  ['the deed did free the red deer',
+   'the jury freed the rugged duke',
+   'the jury freed the rugged deer',
+   'the deed did free the red, red inn',
+   'the deed did free the big, red inn',
+   'the big men deeded the big, red inn',
+   'the nine big men met in the red inn',
+   'the civic men meet in the civic inn',
+   'three men met by the big, civic inn'
+  ],
+  ['the big men deeded the big, red inn',
+   'the nine big men met in the red inn',
+   'the civic men meet in the civic inn',
+   'the old, old wool soon looked very good.',
+   'the seller she sees just sells for less.',
+   'the text she sells just sells for less.',
+   'the good texts she sells sell for less.',
+   'the seller will sell the next sex texts.',
+   'the seed seller seeded the old, old sod.'
+  ],
+  ['the old, old wool soon looked very good.',
+   'the seller will sell the next six texts.',
+   'the seed seller seeded the old, old sod.',
+   'Look at those. Pay the man. Judge the man.',
+   'The deer fell. Free the deer. See the inn.',
+   'The queer, quiet deer will quit the good zoo.',
+   'All the tall, tall lads will have to pay him.',
+   'Mony can make all the tall, tall lads happy.',
+   'Dale will have to pay most of the happy lads.',
+   'Janet added up all our assets just last fall.',
+   'Many happy, pets can play and play at the zoo.'
+  ]
+];
+
+let cur_level = 0;
+let cur_index = 0;
+
+function add_history(text) {
+  let d = $('#history');
+  d.append(text + '<br>');
+  d.scrollTop(d.prop("scrollHeight"));
+}
+
+function set_level(level) {
+  cur_level = level;
+  cur_index = 0;
+  add_history('<br><b>Lesson ' + (cur_level + 1) + '</b>');
+}
+
+function next_lesson() {
+  if (cur_index < LESSONS[cur_level].length - 1) {
+    cur_index++;
+  } else if (cur_level < LESSONS.length - 1) {
+    set_level(cur_level + 1);
+  } else {
+    add_history('<b>Excellent!! Practice the last level again.</b>');
+    set_level(cur_level);
+  }
+}
+
+function show_lesson_text() {
+  let lesson_text = LESSONS[cur_level][cur_index];
+  add_history('<br>Please input: ' + lesson_text);
+  $('#type_here').val('');
+  $('#type_here').focus();
+}
+
+// return the Longest Common Subsequence
+function LCS(a, b) {
+  // console.log("==LCS===");
+  // console.log(a);
+  // console.log(b);
+  let alen = a.length, blen = b.length;
+  let mat = [];
+  let ia, ib;
+  for (ia = 0; ia <= alen; ia++) {
+    mat[ia] = [];
+    for (ib = 0; ib <= blen; ib++) {
+      mat[ia][ib] = 0;
+    }
+  }
+  // compute the LCS
+  for (ia = 0; ia < alen; ia++) {
+    for (ib = 0; ib < blen; ib++) {
+      mat[ia+1][ib+1] = (a[ia] === b[ib]) ?
+        mat[ia][ib] + 1 :
+        Math.max(mat[ia+1][ib], mat[ia][ib+1]);
+    }
+  }
+  // console.log(mat);
+
+  function bad_span(t) {
+    return '<span class="bad">' + t.replace(/ /g, '_') + '</span>';
+  }
+
+  // backtrack
+  let mistakes = 0;
+  let ra = "", rb = "", c;
+  function backtrack(ja, jb) {
+    //console.log("ja=" + ja + ",jb=" + jb);
+    if (ja < 0 || jb < 0) {
+      if (ja >= 0) {
+        ra += bad_span(a.substring(0, ja+1));
+        mistakes += ja;
+      }
+      if (jb >= 0) {
+        rb += bad_span(b.substring(0, jb+1));
+        mistakes += jb;
+      }
+    } else if (a[ja] === b[jb]) {
+      backtrack(ja-1, jb-1);
+      ra += a[ja];
+      rb += b[jb];
+    } else if (mat[ja+1][jb] > mat[ja][jb+1]) {
+      backtrack(ja, jb-1);
+      rb += bad_span(b[jb]);
+      mistakes++;
+    } else {
+      backtrack(ja-1, jb);
+      ra += bad_span(a[ja]);
+      mistakes++;
+    }
+  }
+
+  backtrack(alen - 1, blen - 1);
+  //console.log(ra);
+  //console.log(rb);
+  return [ra, rb, mistakes];
+}
+/*
+LCS("abc", "abc");
+LCS("abc", "zbc");
+LCS("abc", "azc");
+LCS("abc", "abz");
+LCS("abc", "abc ");
+LCS("abc", "ab c");
+LCS("abc", "a c");
+LCS("abc", "bc");
+LCS("abc", "c");
+LCS("abc", "");
+*/
+
+function on_enter() {
+  let input_text = $('#type_here').val();
+  add_history('&nbsp;&nbsp;Your input: ' + input_text);
+
+  let lesson_text = LESSONS[cur_level][cur_index];
+  let [ra, rb, mis] = LCS(lesson_text, input_text);
+
+  if (mis == 0) {
+    add_history('<b>Good!</b>');
+    next_lesson();
+  } else {
+    add_history('&nbsp;Lesson text: ' + ra);
+    add_history('&nbsp;&nbsp;Your input: ' + rb);
+    add_history(mis + ' mistake(s). Try again!');
+  }
+  show_lesson_text();
+}
+
+$(document).on('keydown', function(e) {
+  if (e.which === 8 && !$(e.target).is('input, textarea')) {
+    // disable BackSpace key to navigate to the previous page.
+    e.preventDefault();
+  } else if (e.which === 13) { // Enter key.
+    on_enter();
+  }
+});
+
+// initialize
+set_level(0);
+show_lesson_text();
+
+</script>
+</body>
+</html>
